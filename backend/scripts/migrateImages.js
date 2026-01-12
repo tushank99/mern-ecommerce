@@ -1,22 +1,18 @@
 /**
  * Image Migration Script
  * 
- * This script helps migrate local image paths to Cloudinary URLs.
+ * This script updates all products with free Unsplash image URLs.
+ * NO CLOUDINARY NEEDED - uses free stock images!
  * 
  * HOW TO USE:
- * 1. First, set your Cloudinary credentials as environment variables
+ * 1. Make sure you have MONGO_URI in your .env file
  * 2. Run: node scripts/migrateImages.js
- * 
- * Or you can manually update products in MongoDB Atlas to use placeholder images
- * or re-upload images through the admin panel after deployment.
  */
 
 import mongoose from "mongoose";
 import dotenv from "dotenv";
 import path from "path";
 import { fileURLToPath } from "url";
-import { v2 as cloudinary } from "cloudinary";
-import fs from "fs";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -30,60 +26,56 @@ const productSchema = mongoose.Schema({
 });
 const Product = mongoose.model("Product", productSchema);
 
-// Configure Cloudinary
-cloudinary.config({
-  cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
-  api_key: process.env.CLOUDINARY_API_KEY,
-  api_secret: process.env.CLOUDINARY_API_SECRET,
-});
-
-// Placeholder image URL (use this if you don't have local images)
-const PLACEHOLDER_IMAGE = "https://res.cloudinary.com/demo/image/upload/v1312461204/sample.jpg";
+// FREE Unsplash images - permanent URLs, no signup needed
+const FREE_IMAGES = [
+  "https://images.unsplash.com/photo-1505740420928-5e560c06d30e?w=500&h=500&fit=crop",
+  "https://images.unsplash.com/photo-1523275335684-37898b6baf30?w=500&h=500&fit=crop",
+  "https://images.unsplash.com/photo-1526170375885-4d8ecf77b99f?w=500&h=500&fit=crop",
+  "https://images.unsplash.com/photo-1542291026-7eec264c27ff?w=500&h=500&fit=crop",
+  "https://images.unsplash.com/photo-1560343090-f0409e92791a?w=500&h=500&fit=crop",
+  "https://images.unsplash.com/photo-1511707171634-5f897ff02aa9?w=500&h=500&fit=crop",
+  "https://images.unsplash.com/photo-1585771724684-38269d6639fd?w=500&h=500&fit=crop",
+  "https://images.unsplash.com/photo-1507473885765-e6ed057f782c?w=500&h=500&fit=crop",
+  "https://images.unsplash.com/photo-1517836357463-d25dfeac3438?w=500&h=500&fit=crop",
+  "https://images.unsplash.com/photo-1512820790803-83ca734da794?w=500&h=500&fit=crop",
+];
 
 async function migrateImages() {
   try {
     await mongoose.connect(process.env.MONGO_URI);
-    console.log("Connected to MongoDB");
+    console.log("✅ Connected to MongoDB");
 
     const products = await Product.find({});
-    console.log(`Found ${products.length} products`);
+    console.log(`📦 Found ${products.length} products\n`);
 
-    for (const product of products) {
-      // Skip if already a Cloudinary URL or external URL
-      if (product.image && (product.image.includes("cloudinary") || product.image.startsWith("http"))) {
-        console.log(`✓ ${product.name} - Already using external URL`);
+    let updated = 0;
+    let skipped = 0;
+
+    for (let i = 0; i < products.length; i++) {
+      const product = products[i];
+      
+      // Skip if already has a valid Unsplash URL
+      if (product.image && product.image.startsWith("https://images.unsplash.com")) {
+        console.log(`⏭️  ${product.name} - Already has Unsplash image`);
+        skipped++;
         continue;
       }
 
-      // Check if local file exists
-      const localPath = path.join(__dirname, "../..", product.image);
-      
-      if (fs.existsSync(localPath)) {
-        // Upload to Cloudinary
-        try {
-          const result = await cloudinary.uploader.upload(localPath, {
-            folder: "ecommerce-products",
-          });
-          product.image = result.secure_url;
-          await product.save();
-          console.log(`✓ ${product.name} - Uploaded to Cloudinary`);
-        } catch (uploadError) {
-          console.log(`✗ ${product.name} - Upload failed, using placeholder`);
-          product.image = PLACEHOLDER_IMAGE;
-          await product.save();
-        }
-      } else {
-        // Use placeholder
-        console.log(`✗ ${product.name} - Local file not found, using placeholder`);
-        product.image = PLACEHOLDER_IMAGE;
-        await product.save();
-      }
+      // Assign a free Unsplash image
+      const newImage = FREE_IMAGES[i % FREE_IMAGES.length];
+      product.image = newImage;
+      await product.save();
+      console.log(`✅ ${product.name} - Updated with free image`);
+      updated++;
     }
 
-    console.log("\nMigration complete!");
+    console.log("\n" + "=".repeat(40));
+    console.log("🎉 Migration complete!");
+    console.log(`   Updated: ${updated} | Skipped: ${skipped}`);
+    console.log("=".repeat(40));
     process.exit(0);
   } catch (error) {
-    console.error("Migration failed:", error);
+    console.error("❌ Migration failed:", error);
     process.exit(1);
   }
 }

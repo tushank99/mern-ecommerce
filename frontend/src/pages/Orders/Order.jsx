@@ -12,6 +12,7 @@ import {
   usePayOrderMutation,
 } from "../../redux/api/orderApiSlice";
 import { FaPaypal, FaTruck, FaCheckCircle, FaTimesCircle, FaMapMarkerAlt, FaUser, FaEnvelope, FaCreditCard, FaBox } from "react-icons/fa";
+import { getImageUrl, handleImageError } from "../../Utils/imageUtils";
 
 const Order = () => {
   const { id: orderId } = useParams();
@@ -133,8 +134,9 @@ const Order = () => {
                   {order.orderItems.map((item, index) => (
                     <div key={index} className="p-4 flex items-center gap-4 hover:bg-gray-700/30 transition-colors">
                       <img
-                        src={item.image}
+                        src={getImageUrl(item.image)}
                         alt={item.name}
+                        onError={handleImageError}
                         className="w-20 h-20 object-cover rounded-lg border border-gray-600"
                       />
                       <div className="flex-1">

@@ -6,6 +6,7 @@ import { addToCart } from "../../redux/features/cart/cartSlice";
 import { toast } from "react-toastify";
 import PropTypes from "prop-types";
 import HeartIcon from "./HeartIcon";
+import { getImageUrl, handleImageError } from "../../Utils/imageUtils";
 
 const ProductCard = ({ p }) => {
   const dispatch = useDispatch();
@@ -25,8 +26,9 @@ const ProductCard = ({ p }) => {
         <Link to={`/product/${p._id}`}>
           <img
             className="w-full h-48 object-cover group-hover:scale-110 transition-transform duration-500"
-            src={p.image}
+            src={getImageUrl(p.image)}
             alt={p.name}
+            onError={handleImageError}
           />
         </Link>
         {/* Brand Badge */}

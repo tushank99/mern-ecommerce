@@ -5,6 +5,7 @@ import Message from "../components/Message";
 import { FaArrowRight, FaStar, FaShippingFast, FaShieldAlt, FaHeadset } from "react-icons/fa";
 import HeartIcon from "./Products/HeartIcon";
 import PropTypes from "prop-types";
+import { getImageUrl, handleImageError } from "../Utils/imageUtils";
 
 const Home = () => {
   const { keyword } = useParams();
@@ -40,8 +41,9 @@ const Home = () => {
                 <div className="relative">
                   <div className="absolute -inset-4 bg-white/20 rounded-3xl blur-xl"></div>
                   <img
-                    src={topProducts[0].image}
+                    src={getImageUrl(topProducts[0].image)}
                     alt="Featured Product"
+                    onError={handleImageError}
                     className="relative w-full max-w-md mx-auto rounded-2xl shadow-2xl transform hover:scale-105 transition-transform duration-500"
                   />
                   <div className="absolute bottom-4 left-4 right-4 bg-black/70 backdrop-blur-sm rounded-xl p-4">
@@ -227,8 +229,9 @@ const ProductCard = ({ product }) => {
       <div className="relative overflow-hidden">
         <Link to={`/product/${product._id}`}>
           <img
-            src={product.image}
+            src={getImageUrl(product.image)}
             alt={product.name}
+            onError={handleImageError}
             className="w-full h-56 object-cover group-hover:scale-110 transition-transform duration-500"
           />
         </Link>

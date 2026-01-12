@@ -1,14 +1,16 @@
 import { Link } from "react-router-dom";
 import PropTypes from "prop-types";
 import HeartIcon from "./HeartIcon";
+import { getImageUrl, handleImageError } from "../../Utils/imageUtils";
 
 const SmallProduct = ({ product }) => {
   return (
     <div className="w-[20rem] ml-[2rem] p-3">
       <div className="relative">
         <img
-          src={product.image}
+          src={getImageUrl(product.image)}
           alt={product.name}
+          onError={handleImageError}
           className="h-auto rounded"
         />
         <HeartIcon product={product} />

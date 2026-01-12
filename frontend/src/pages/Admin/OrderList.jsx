@@ -4,6 +4,7 @@ import { Link } from "react-router-dom";
 import { useGetOrdersQuery } from "../../redux/api/orderApiSlice";
 import AdminMenu from "./AdminMenu";
 import { FaEye, FaPaypal, FaCreditCard, FaTruck, FaBox, FaCheckCircle, FaTimesCircle, FaCalendarAlt, FaUser, FaDollarSign } from "react-icons/fa";
+import { getImageUrl, handleImageError } from "../../Utils/imageUtils";
 
 const OrderList = () => {
   const { data: orders, isLoading, error } = useGetOrdersQuery();
@@ -130,8 +131,9 @@ const OrderList = () => {
                         <td className="py-4 px-4">
                           <div className="flex items-center gap-3">
                             <img
-                              src={order.orderItems[0]?.image}
+                              src={getImageUrl(order.orderItems[0]?.image)}
                               alt={order._id}
+                              onError={handleImageError}
                               className="w-14 h-14 object-cover rounded-lg border border-gray-600"
                             />
                             <div>
