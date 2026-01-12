@@ -1,12 +1,28 @@
 import mongoose from "mongoose";
 
+let isConnected = false;
+
 const connectDB = async () => {
+  if (isConnected) {
+    console.log("Using existing MongoDB connection");
+    return;
+  }
+  
   try {
-    await mongoose.connect(process.env.MONGO_URI);
-    console.log(`Successfully connnected to mongoDB 👍`);
+    if (!process.env.MONGO_URI) {
+      console.error("MONGO_URI environment variable is not set");
+      return;
+    }
+    
+    const conn = await mongoose.connect(process.env.MONGO_URI);
+    isConnected = conn.connections[0].readyState === 1;
+    console.log(`Successfully connected to MongoDB 👍`);
   } catch (error) {
-    console.error(`ERROR: ${error.message}`);
-    process.exit(1);
+    console.error(`MongoDB connection error: ${error.message}`);
+    // Don't exit in production - serverless functions should handle this gracefully
+    if (process.env.NODE_ENV !== "production") {
+      process.exit(1);
+    }
   }
 };
 

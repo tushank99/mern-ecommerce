@@ -1,17 +1,8 @@
 import path from "path";
 import express from "express";
 import multer from "multer";
-import { v2 as cloudinary } from "cloudinary";
-import { CloudinaryStorage } from "multer-storage-cloudinary";
 
 const router = express.Router();
-
-// Configure Cloudinary
-cloudinary.config({
-  cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
-  api_key: process.env.CLOUDINARY_API_KEY,
-  api_secret: process.env.CLOUDINARY_API_SECRET,
-});
 
 // Check if Cloudinary is configured
 const isCloudinaryConfigured = () => {
@@ -22,17 +13,7 @@ const isCloudinaryConfigured = () => {
   );
 };
 
-// Cloudinary storage
-const cloudinaryStorage = new CloudinaryStorage({
-  cloudinary: cloudinary,
-  params: {
-    folder: "ecommerce-products",
-    allowed_formats: ["jpg", "jpeg", "png", "webp"],
-    transformation: [{ width: 800, height: 800, crop: "limit" }],
-  },
-});
-
-// Local storage (fallback for development)
+// Local storage (works for development)
 const localStorage = multer.diskStorage({
   destination: (req, file, cb) => {
     cb(null, "uploads/");
@@ -57,30 +38,76 @@ const fileFilter = (req, file, cb) => {
   }
 };
 
-// Use Cloudinary in production, local storage in development
-const storage = isCloudinaryConfigured() ? cloudinaryStorage : localStorage;
-const upload = multer({ storage, fileFilter });
-const uploadSingleImage = upload.single("image");
+// Create upload middleware - only use Cloudinary if configured
+let uploadMiddleware = null;
 
-router.post("/", (req, res) => {
-  uploadSingleImage(req, res, (err) => {
-    if (err) {
-      res.status(400).send({ message: err.message });
-    } else if (req.file) {
-      // Cloudinary returns path in req.file.path as full URL
-      // Local storage returns relative path
-      const imageUrl = isCloudinaryConfigured()
-        ? req.file.path
-        : `/${req.file.path}`;
+const getUploadMiddleware = async () => {
+  if (uploadMiddleware) return uploadMiddleware;
+  
+  if (isCloudinaryConfigured()) {
+    try {
+      // Dynamic import to avoid crash when Cloudinary isn't configured
+      const cloudinaryModule = await import("cloudinary");
+      const cloudinaryStorageModule = await import("multer-storage-cloudinary");
       
-      res.status(200).send({
-        message: "Image uploaded successfully",
-        image: imageUrl,
+      const cloudinary = cloudinaryModule.v2;
+      const CloudinaryStorage = cloudinaryStorageModule.CloudinaryStorage;
+      
+      cloudinary.config({
+        cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
+        api_key: process.env.CLOUDINARY_API_KEY,
+        api_secret: process.env.CLOUDINARY_API_SECRET,
       });
-    } else {
-      res.status(400).send({ message: "No image file provided" });
+
+      const cloudinaryStorage = new CloudinaryStorage({
+        cloudinary: cloudinary,
+        params: {
+          folder: "ecommerce-products",
+          allowed_formats: ["jpg", "jpeg", "png", "webp"],
+          transformation: [{ width: 800, height: 800, crop: "limit" }],
+        },
+      });
+
+      uploadMiddleware = multer({ storage: cloudinaryStorage, fileFilter });
+      console.log("Using Cloudinary for uploads");
+    } catch (error) {
+      console.log("Cloudinary not available, using local storage:", error.message);
+      uploadMiddleware = multer({ storage: localStorage, fileFilter });
     }
-  });
+  } else {
+    uploadMiddleware = multer({ storage: localStorage, fileFilter });
+    console.log("Using local storage for uploads");
+  }
+  
+  return uploadMiddleware;
+};
+
+router.post("/", async (req, res) => {
+  try {
+    const upload = await getUploadMiddleware();
+    const uploadSingleImage = upload.single("image");
+
+    uploadSingleImage(req, res, (err) => {
+      if (err) {
+        res.status(400).send({ message: err.message });
+      } else if (req.file) {
+        // Cloudinary returns path in req.file.path as full URL
+        // Local storage returns relative path
+        const imageUrl = isCloudinaryConfigured()
+          ? req.file.path
+          : `/${req.file.path}`;
+        
+        res.status(200).send({
+          message: "Image uploaded successfully",
+          image: imageUrl,
+        });
+      } else {
+        res.status(400).send({ message: "No image file provided" });
+      }
+    });
+  } catch (error) {
+    res.status(500).send({ message: "Upload initialization failed" });
+  }
 });
 
 export default router;

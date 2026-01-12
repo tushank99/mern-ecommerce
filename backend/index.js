@@ -17,13 +17,12 @@ import orderRoutes from "./routes/orderRoutes.js";
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-// Load .env file - try multiple paths for different environments
-if (process.env.NODE_ENV !== "production") {
-  dotenv.config({ path: path.join(__dirname, "../.env") });
-}
+// Load .env file in development
+dotenv.config({ path: path.join(__dirname, "../.env") });
 
 const port = process.env.PORT || 5000;
 
+// Connect to database
 connectDB();
 
 const app = express();
